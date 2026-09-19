@@ -20,3 +20,8 @@ class AuthPayload(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "Hello from backend"}
+
+@app.post("/auth/register")
+def register_user(payload: AuthPayload):
+    print(payload)
+    return payload
