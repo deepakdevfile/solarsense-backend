@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Any
+from .schemas import AuthPayload, UserOut
 
 app = FastAPI(title = "SolarSense API")
 
@@ -13,15 +13,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class AuthPayload(BaseModel):
-    email: str
-    password: str
+
 
 @app.get("/")
 async def root():
     return {"message": "Hello from backend"}
 
-@app.post("/auth/register")
-def register_user(payload: AuthPayload):
+@app.post("/auth/register", response_model=UserOut, status_code=201)
+def register_user(payload: AuthPayload, db: Session = Depends(get_db)):
     print(payload)
     return payload
