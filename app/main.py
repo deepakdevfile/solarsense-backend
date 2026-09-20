@@ -40,3 +40,7 @@ def login_user(payload: AuthPayload, db: Session = Depends(get_db)):
         raise HTTPException(401, "Invalid email or password")
     # print(user.email, user.password_hash)
     return user
+
+@app.post("/auth/logout")
+def logout_user():
+    return {"message": "user session cookies are deleted"}
