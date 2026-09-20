@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from .schemas import AuthPayload, UserOut
@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from .db import get_db, Base, engine
 from sqlalchemy import select
 from .models import User
+from .auth import verify_password
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI(title = "SolarSense API")
@@ -30,4 +31,12 @@ def register_user(payload: AuthPayload, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+    return user
+
+@app.post("/auth/login", response_model=UserOut)
+def login_user(payload: AuthPayload, db: Session = Depends(get_db)):
+    user = db.scalar(select(User).where(User.email == payload.email.lower()))
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(401, "Invalid email or password")
+    # print(user.email, user.password_hash)
     return user
