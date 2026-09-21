@@ -5,11 +5,17 @@ from fastapi import Request, Depends, HTTPException, status
 from app.db import get_db
 from sqlalchemy.orm import Session
 from app.models import User
+import bcrypt
 
 ALGORITHM = "HS256"
 
+import bcrypt
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8')[:72], bcrypt.gensalt()).decode('utf-8')
+
 def verify_password(password: str, password_hash: str) -> bool:
-    return password == password_hash
+    return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
 
 def create_token(user_id: int) -> str:
     payload = {"sub": str(user_id), "exp": datetime.now(timezone.utc) + timedelta(hours = 24)}
