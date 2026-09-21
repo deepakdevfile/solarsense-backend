@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from sqlalchemy import select
 from ..models import User
-from ..auth import verify_password, create_token, get_current_user
+from ..auth import verify_password, create_token, get_current_user, hash_password
 from ..config import settings
 
 router = APIRouter()
@@ -14,7 +14,7 @@ router = APIRouter()
 def register_user(payload: AuthPayload, db: Session = Depends(get_db)):
     if db.scalar(select(User).where(User.email == payload.email.lower())):
         raise HTTPException(409, "Email already registered")
-    user = User(email = payload.email.lower(), password_hash = payload.password)
+    user = User(email = payload.email.lower(), password_hash = hash_password(payload.password))
     db.add(user)
     db.commit()
     db.refresh(user)
