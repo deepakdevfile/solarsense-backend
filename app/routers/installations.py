@@ -3,6 +3,7 @@ from app.schemas import InstallationCreate, InstallationOut
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import Installation
+from sqlalchemy import select
 
 router = APIRouter()
 
@@ -12,4 +13,10 @@ def add_installation(payload: InstallationCreate, db: Session = Depends(get_db))
     db.add(installation)
     db.commit()
     db.refresh(installation)
+    return installation
+
+@router.get("/installation", response_model=list[InstallationOut])
+def list_installation(db: Session = Depends(get_db)):
+    installation = db.scalars(select(Installation)).all()
+    # print(installation)
     return installation
