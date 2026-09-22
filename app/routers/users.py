@@ -8,7 +8,7 @@ from ..models import User
 from ..auth import verify_password, create_token, get_current_user, hash_password
 from ..config import settings
 
-router = APIRouter()
+router = APIRouter(tags=["Users"])
 
 @router.post("/auth/register", response_model=UserOut, status_code=201)
 def register_user(payload: AuthPayload, db: Session = Depends(get_db)):
