@@ -40,3 +40,11 @@ def update_installation(id: int, payload: InstallationCreate, db: Session = Depe
     db.commit()
     db.refresh(installation)
     return installation
+
+@router.delete("/installation/{id}")
+def delete_installation(id: int, db: Session = Depends(get_db)):
+    installation = db.scalar(select(Installation).where(Installation.id == id))
+    if not installation:
+        raise HTTPException(404, "Installation not found")
+    db.delete(installation)
+    db.commit()
