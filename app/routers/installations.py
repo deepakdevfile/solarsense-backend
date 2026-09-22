@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from app.schemas import InstallationCreate, InstallationOut
 from sqlalchemy.orm import Session
 from app.db import get_db
@@ -19,4 +19,11 @@ def add_installation(payload: InstallationCreate, db: Session = Depends(get_db))
 def list_installation(db: Session = Depends(get_db)):
     installation = db.scalars(select(Installation)).all()
     # print(installation)
+    return installation
+
+@router.get("/installation/{id}", response_model=InstallationOut, status_code=201)
+def get_installation(id: int, db: Session = Depends(get_db)):
+    installation = db.scalar(select(Installation).where(Installation.id == id))
+    if not installation: 
+        raise HTTPException(404, "Installation not found")
     return installation
