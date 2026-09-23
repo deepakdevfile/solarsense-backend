@@ -11,13 +11,14 @@ from ..config import settings
 router = APIRouter(tags=["Users"])
 
 @router.post("/auth/register", response_model=UserOut, status_code=201)
-def register_user(payload: AuthPayload, db: Session = Depends(get_db)):
+def register_user(payload: AuthPayload, response: Response, db: Session = Depends(get_db)):
     if db.scalar(select(User).where(User.email == payload.email.lower())):
         raise HTTPException(409, "Email already registered")
     user = User(email = payload.email.lower(), password_hash = hash_password(payload.password))
     db.add(user)
     db.commit()
     db.refresh(user)
+    response.set_cookie("access_token", create_token(user.id), httponly = True, secure = settings.cookie_secure, samesite = "lax", max_age = 86400)
     return user
 
 @router.post("/auth/login", response_model=UserOut)
