@@ -29,7 +29,7 @@ def get_installation(id: int, user: User = Depends(get_current_user), db: Sessio
         raise HTTPException(404, "Installation not found")
     return installation
 
-@router.put("/installation/{id}", response_model=InstallationOut, status_code=200)
+@router.put("/installation/{id}", response_model=InstallationOut)
 def update_installation(id: int, payload: InstallationCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     installation = db.scalar(select(Installation).where(Installation.id == id, Installation.owner_id == user.id))
     if not installation: 
@@ -42,7 +42,7 @@ def update_installation(id: int, payload: InstallationCreate, user: User = Depen
     db.refresh(installation)
     return installation
 
-@router.delete("/installation/{id}")
+@router.delete("/installation/{id}", status_code=204)
 def delete_installation(id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     installation = db.scalar(select(Installation).where(Installation.id == id, Installation.owner_id == user.id))
     if not installation:

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
-
+from datetime import datetime
 
 class AuthPayload(BaseModel):
     email: EmailStr
@@ -18,3 +18,14 @@ class InstallationCreate(BaseModel):
 class InstallationOut(InstallationCreate):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+class MeasurementCreate(BaseModel):
+    measured_at: datetime | None = None
+    energy_kwh: float = Field(ge = 0)
+    power_kwh: float = Field(ge = 0)
+
+class MeasurementOut(MeasurementCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    measured_at: datetime
+    installation_id: int
