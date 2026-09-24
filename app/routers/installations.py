@@ -2,35 +2,36 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.schemas import InstallationCreate, InstallationOut
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.models import Installation
+from app.models import Installation, User
 from sqlalchemy import select
+from app.auth import get_current_user
 
 router = APIRouter(tags=["Installations"])
 
 @router.post("/installation", response_model=InstallationOut, status_code=201)
-def add_installation(payload: InstallationCreate, db: Session = Depends(get_db)):
-    installation = Installation(**payload.model_dump())
+def add_installation(payload: InstallationCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    installation = Installation(**payload.model_dump(), owner_id = user.id)
     db.add(installation)
     db.commit()
     db.refresh(installation)
     return installation
 
 @router.get("/installation", response_model=list[InstallationOut])
-def list_installation(db: Session = Depends(get_db)):
-    installation = db.scalars(select(Installation)).all()
+def list_installation(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    installation = db.scalars(select(Installation).where(Installation.owner_id == user.id).order_by(Installation.id.desc())).all()
     # print(installation)
     return installation
 
 @router.get("/installation/{id}", response_model=InstallationOut, status_code=201)
-def get_installation(id: int, db: Session = Depends(get_db)):
-    installation = db.scalar(select(Installation).where(Installation.id == id))
+def get_installation(id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    installation = db.scalar(select(Installation).where(Installation.id == id, Installation.owner_id == user.id))
     if not installation: 
         raise HTTPException(404, "Installation not found")
     return installation
 
 @router.put("/installation/{id}", response_model=InstallationOut, status_code=200)
-def update_installation(id: int, payload: InstallationCreate, db: Session = Depends(get_db)):
-    installation = db.scalar(select(Installation).where(Installation.id == id))
+def update_installation(id: int, payload: InstallationCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    installation = db.scalar(select(Installation).where(Installation.id == id, Installation.owner_id == user.id))
     if not installation: 
         raise HTTPException(404, "Installation not found")
     installation.name = payload.name
@@ -42,8 +43,8 @@ def update_installation(id: int, payload: InstallationCreate, db: Session = Depe
     return installation
 
 @router.delete("/installation/{id}")
-def delete_installation(id: int, db: Session = Depends(get_db)):
-    installation = db.scalar(select(Installation).where(Installation.id == id))
+def delete_installation(id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    installation = db.scalar(select(Installation).where(Installation.id == id, Installation.owner_id == user.id))
     if not installation:
         raise HTTPException(404, "Installation not found")
     db.delete(installation)

@@ -23,6 +23,7 @@ def create_token(user_id: int) -> str:
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     token = request.cookies.get("access-token")
+    # print(request.headers)
     # print(request.cookies)
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
