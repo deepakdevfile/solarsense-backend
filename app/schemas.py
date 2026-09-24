@@ -29,3 +29,9 @@ class MeasurementOut(MeasurementCreate):
     id: int
     measured_at: datetime
     installation_id: int
+
+class ImportResult(BaseModel):
+    inserted: int
+    skipped_duplicates: int
+    rejected: int
+    errors: list[str]
