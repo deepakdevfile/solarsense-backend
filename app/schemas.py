@@ -22,7 +22,7 @@ class InstallationOut(InstallationCreate):
 class MeasurementCreate(BaseModel):
     measured_at: datetime | None = None
     energy_kwh: float = Field(ge = 0)
-    power_kwh: float = Field(ge = 0)
+    power_kw: float = Field(ge = 0)
 
 class MeasurementOut(MeasurementCreate):
     model_config = ConfigDict(from_attributes=True)

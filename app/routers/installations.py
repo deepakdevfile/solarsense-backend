@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
-from app.schemas import InstallationCreate, InstallationOut
+from app.schemas import InstallationCreate, InstallationOut, MeasurementCreate, MeasurementOut
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.models import Installation, User
+from app.models import Installation, User, Measurement
 from sqlalchemy import select
 from app.auth import get_current_user
+from datetime import datetime, timezone
 
 router = APIRouter(tags=["Installations"])
 
@@ -49,3 +50,19 @@ def delete_installation(id: int, user: User = Depends(get_current_user), db: Ses
         raise HTTPException(404, "Installation not found")
     db.delete(installation)
     db.commit()
+
+@router.post("/installation/{id}/measurements", response_model=MeasurementOut, status_code=201)
+def create_measurement(id: int, payload: MeasurementCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    measurement_row = db.scalar(select(Installation).where(Installation.id == id, Installation.owner_id == user.id))
+    if not measurement_row:
+        raise HTTPException(404, "Installation not found")
+    measured_at = payload.measured_at or datetime.now(timezone.utc)
+    if payload.power_kw > measurement_row.capacity*1.5:
+        raise HTTPException(422, "Power is implausibly high for installation capacity")
+    if db.scaler(select(Measurement).where(Measurement.id == id, Measurement.measured_at == measured_at)):
+        raise HTTPException(409, "Measurement already exists")
+    measurement = Measurement(**payload.model_dump(exclude = {"measured_at"}), measured_at = measured_at, installation_id = id)
+    db.add(measurement)
+    db.commit()
+    db.refresh(measurement)
+    return measurement
