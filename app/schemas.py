@@ -35,3 +35,14 @@ class ImportResult(BaseModel):
     skipped_duplicates: int
     rejected: int
     errors: list[str]
+
+class WeatherOut(BaseModel):
+    model_config = ConfigDict(from_attributes= True)
+    id: int 
+    installation_id: int
+    observed_at: datetime
+    temperature_c: float | None
+    cloud_cover_pct: float | None
+    precipitation_mm: float | None
+    wind_speed_kmh: float | None
+    shortwave_radiation_w_m2: float | None

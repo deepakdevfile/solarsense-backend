@@ -19,6 +19,7 @@ class Installation(Base):
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     owner: Mapped[User] = relationship(back_populates="installations")
     measurements: Mapped[list["Measurement"]] = relationship(back_populates="installation", cascade="all, delete-orphan")
+    weather: Mapped[list["WeatherObservation"]] = relationship(back_populates= "installation", cascade= "all, delete-orphan")
 
 class Measurement(Base):
     __tablename__ = "measurements"
@@ -30,3 +31,16 @@ class Measurement(Base):
     power_kw: Mapped[float] = mapped_column(Float)
     installation_id: Mapped[int] = mapped_column(ForeignKey("installations.id", ondelete="CASCADE"))
     installation: Mapped[Installation] = relationship(back_populates="measurements")
+
+class WeatherObservation(Base):
+    __tablename__ = "waether_observations"
+    __table_args__ = (UniqueConstraint("installation_id", "observed_at", name = "uq_weather_installation_time"), Index("ix_weather_installation_time", "installation_id", "observed_at"))
+    id: Mapped[int] = mapped_column(primary_key= True)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone= True), index = True)
+    temperature_c: Mapped[float | None] = mapped_column(Float, nullable= True)
+    cloud_cover_pct: Mapped[float | None] = mapped_column(Float, nullable= True)
+    precipitation_mm: Mapped[float | None] = mapped_column(Float, nullable= True)
+    wind_speed_kmh: Mapped[float | None] = mapped_column(Float, nullable= True)
+    shortwave_radiation_w_m2: Mapped[float | None ] = mapped_column(Float, nullable= True)
+    installation_id: Mapped[int] = mapped_column(ForeignKey("installations.id", ondelete="CASCADE"))
+    installation: Mapped[Installation] = relationship(back_populates= "weather")
