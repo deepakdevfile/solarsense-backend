@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
-from sqlalchemy import String, Float, ForeignKey, UniqueConstraint, Index, DateTime, func
+from sqlalchemy import String, Float, ForeignKey, UniqueConstraint, Index, DateTime, func, text
 from datetime import datetime
 
 class User(Base):
@@ -15,6 +15,8 @@ class Installation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120))
     location: Mapped[str] = mapped_column(String(255))
+    latitude: Mapped[float] = mapped_column(Float, server_default=text("0.0"), nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, server_default=text("0.0"), nullable=False)
     capacity: Mapped[float] = mapped_column(Float)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     owner: Mapped[User] = relationship(back_populates="installations")

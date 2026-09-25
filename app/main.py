@@ -5,7 +5,7 @@ from app.routers import users
 from app.routers import installations
 from app.routers import measurements
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 app = FastAPI(title = "SolarSense API")
 
 app.add_middleware(
