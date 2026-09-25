@@ -2,12 +2,14 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import datetime
 
 class AuthPayload(BaseModel):
+    name: str = Field(default=None, min_length=2, max_length = 120)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str | None = Field(default = None, min_length=8, max_length=128)
 
 class UserOut(BaseModel):
     email: EmailStr
     id: int
+    name: str
     model_config = ConfigDict(from_attributes=True)
 
 class InstallationCreate(BaseModel):
