@@ -13,6 +13,8 @@ class UserOut(BaseModel):
 class InstallationCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     location: str = Field(min_length=1, max_length=255)
+    latitude: float = Field(ge = -90, le = 90)
+    longitude: float = Field(ge = -180, le = 180)
     capacity: float = Field(gt=0)
 
 class InstallationOut(InstallationCreate):
