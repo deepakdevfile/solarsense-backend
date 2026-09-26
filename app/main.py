@@ -5,13 +5,14 @@ from app.routers import users
 from app.routers import installations
 from app.routers import measurements
 from app.routers import weathers
+from app.config import settings
 
 # Base.metadata.create_all(bind=engine)
 app = FastAPI(title = "SolarSense API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

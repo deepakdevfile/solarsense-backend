@@ -12,7 +12,7 @@ router = APIRouter(tags=["measurements"])
 @router.get("/measurements", response_model=list[MeasurementOut])
 def list_measurement(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     measurements = select(Measurement).join(Installation).where(Installation.owner_id == user.id)
-    return db.scalars(measurements.order_by(Measurement.measured_at)).all()
+    return db.scalars(measurements.order_by(Measurement.id)).all()
 
 @router.get("/measuremet/{id}", response_model=MeasurementOut)
 def get_measurement(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
