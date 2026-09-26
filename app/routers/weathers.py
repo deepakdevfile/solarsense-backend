@@ -18,10 +18,12 @@ def list_weather(id: int, user: User = Depends(get_current_user), db: Session = 
 
 @router.post("/weather/{id}/sync")
 def weather_sync(id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # print("weather request recieved")
     installation_row = db.scalar(select(Installation).where(Installation.id == id, Installation.owner_id == user.id))
     if not installation_row:
         raise HTTPException(404, "Installation not found")
     try:
+        # print("sending weather request")
         count = sync_weather(db, installation_row)
     except Exception as exc:
         raise HTTPException(502, f"Weather provider request failed: {exc}")
