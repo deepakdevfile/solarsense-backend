@@ -4,6 +4,7 @@ from app.db import Base, engine
 from app.routers import users
 from app.routers import installations
 from app.routers import measurements
+from app.routers import weathers
 
 # Base.metadata.create_all(bind=engine)
 app = FastAPI(title = "SolarSense API")
@@ -19,6 +20,7 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(installations.router)
 app.include_router(measurements.router)
+app.include_router(weathers.router)
 
 @app.get("/")
 async def root():

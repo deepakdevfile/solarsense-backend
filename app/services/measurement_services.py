@@ -13,6 +13,7 @@ def import_measurements(db: Session, installation: Installation, file):
     required = {"timestamp", "power_kw", "energy_kwh"}
     if not reader.fieldnames or not required.issubset(set(reader.fieldnames)):
         return 0, 0, 1, ["CSV must contain: timestamp, power_kw, energy_kwh"]
+    count = 0
     for n, row in enumerate(reader, start=2):
         try: 
             measured_at = datetime.fromisoformat(row["timestamp"].replace("Z", "+00:00"))
@@ -34,5 +35,5 @@ def import_measurements(db: Session, installation: Installation, file):
             rejected += 1
             if len(errors) < 25:
                 errors.append(f"Row {n}: {exc}")
-        db.commit()
-        return inserted, skipped, rejected, errors
+    db.commit()
+    return inserted, skipped, rejected, errors
