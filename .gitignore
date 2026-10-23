@@ -1,0 +1,88 @@
+# =================
+# Python & FastAPI
+# =================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# Distribution / Packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Installer Logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit Testing & Coverage
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+
+# =================
+# Secrets & Configs
+# =================
+.env
+.env.local
+.env.*.local
+
+# =================
+# Databases & Logs
+# =================
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.db
+
+# =================
+# IDEs & Operating Systems
+# =================
+# VS Code
+.vscode/
+!.vscode/extensions.json
+
+# PyCharm / IntelliJ
+.idea/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
