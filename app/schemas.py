@@ -1,10 +1,20 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from datetime import datetime
 
-class AuthPayload(BaseModel):
-    name: str = Field(default=None, min_length=2, max_length = 120)
+def _check_password_bytes(value: str) -> str:
+    if len(value.encode("utf-8")) > 72:
+        raise ValueError("password must be at least 72 bytes")
+    return value
+
+class RegisterPayload(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    password: str | None = Field(default = None, min_length=8, max_length=128)
+    password: str = Field(min_length=8, max_length=72)
+    _pw = field_validator("password")(_check_password_bytes)
+
+class LoginPayload(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
 
 class UserOut(BaseModel):
     email: EmailStr
@@ -40,6 +50,14 @@ class ImportResult(BaseModel):
     rejected: int
     errors: list[str]
 
+class InstallationSummary(BaseModel):
+    measurement_count: int
+    total_energy_kwh: float
+    peak_power_kw: float
+    first_measured_at: datetime | None
+    last_measured_at: datetime | None
+    weather_count: int
+
 class WeatherOut(BaseModel):
     model_config = ConfigDict(from_attributes= True)
     id: int 
@@ -50,3 +68,8 @@ class WeatherOut(BaseModel):
     precipitation_mm: float | None
     wind_speed_kmh: float | None
     shortwave_radiation_w_m2: float | None
+    is_forecast: bool
+
+class WeatherSyncResult(BaseModel):
+    upserted: int
+    source: str

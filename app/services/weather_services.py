@@ -1,36 +1,72 @@
-from sqlalchemy.orm import Session
-from app.models import Installation, WeatherObservation
+from datetime import date, datetime, timezone
+
 import httpx
-from datetime import datetime, timezone
-from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import Session
 
-OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+from app.models import Installation, WeatherObservation
 
-# url = https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&hourly=temperature_2m,precipitation,wind_speed_10m,cloud_cover,shortwave_radiation&timezone=GMT&past_days=7&forecast_days=3
+FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"  # NEW: real history (the forecast API only has ~7 past days)
+HOURLY = ["temperature_2m", "cloud_cover", "precipitation", "wind_speed_10m", "shortwave_radiation"]
+MAX_RANGE_DAYS = 366
 
-def sync_weather(db: Session, installation_row: Installation):
-    params = {"latitude": installation_row.latitude, "longitude": installation_row.longitude, "hourly": ["temperature_2m", "cloud_cover", "precipitation", "wind_speed_10m", "shortwave_radiation"], "timezone": "GMT", "past_days": 7, "forecast_days": 3}
-    with httpx.Client(timeout= 20) as client:
-        response = client.get(OPEN_METEO_URL, params= params)
-        # print(response.url)
+
+def sync_weather(db: Session, installation: Installation, start: date | None = None, end: date | None = None):
+    """Fetch hourly weather and upsert it. Returns (rows_upserted, source)."""
+    params: dict = {
+        "latitude": installation.latitude, "longitude": installation.longitude,
+        "hourly": HOURLY, "timezone": "GMT",
+    }
+    if start and end:
+        if end < start:
+            raise ValueError("end date must not be before start date")
+        if (end - start).days > MAX_RANGE_DAYS:
+            raise ValueError(f"date range must be at most {MAX_RANGE_DAYS} days")
+        url, source = ARCHIVE_URL, "archive"
+        params |= {"start_date": start.isoformat(), "end_date": end.isoformat()}
+    else:
+        url, source = FORECAST_URL, "forecast"
+        params |= {"past_days": 7, "forecast_days": 3}
+
+    with httpx.Client(timeout=30) as client:
+        response = client.get(url, params=params)
         response.raise_for_status()
-        data = response.json()
-    # print("I am invisible")
-    hourly = data.get("hourly", {})
-    times = hourly.get("time", [])
-    inserted = 0
-    def val(name, i):
-        values = hourly.get(name, [])
-        if i < len(values):
-            return values[i]  
-        else:
-            return None
-    for i, raw in enumerate(times):
-        observed_at = datetime.fromisoformat(raw).replace(tzinfo = timezone.utc)
-        exists = db.scalar(select(WeatherObservation).where(WeatherObservation.installation_id == installation_row.id, WeatherObservation.observed_at == observed_at))
-        if exists: 
-            continue
-        db.add(WeatherObservation(installation_id = installation_row.id, observed_at = observed_at, temperature_c = val("temperature_2m", i), cloud_cover_pct = val("cloud_cover", i), precipitation_mm = val("precipitation", i), wind_speed_kmh = val("wind_speed_10m", i), shortwave_radiation_w_m2 = val("shortwave_radiation", i)))
-        inserted += 1
+        hourly = response.json().get("hourly", {})
+
+    now = datetime.now(timezone.utc)
+    rows = []
+    for i, raw in enumerate(hourly.get("time", [])):
+        def val(name):
+            values = hourly.get(name, [])
+            return values[i] if i < len(values) else None
+
+        observed_at = datetime.fromisoformat(raw).replace(tzinfo=timezone.utc)
+        row = {
+            "installation_id": installation.id, "observed_at": observed_at,
+            "temperature_c": val("temperature_2m"), "cloud_cover_pct": val("cloud_cover"),
+            "precipitation_mm": val("precipitation"), "wind_speed_kmh": val("wind_speed_10m"),
+            "shortwave_radiation_w_m2": val("shortwave_radiation"),
+            "is_forecast": observed_at > now,
+        }
+        if all(row[k] is None for k in ("temperature_c", "cloud_cover_pct", "shortwave_radiation_w_m2")):
+            continue  # archive data lags a few days: skip hours with no values
+        rows.append(row)
+
+    if not rows:
+        return 0, source
+
+    # FIX: one-row-at-a-time SELECT/INSERT replaced by an upsert; forecast rows are refreshed
+    # with newer values (and is_forecast flips to false) once their hour has passed.
+    upserted = 0
+    for i in range(0, len(rows), 1000):
+        stmt = pg_insert(WeatherObservation).values(rows[i:i + 1000])
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_weather_installation_time",
+            set_={c: stmt.excluded[c] for c in (
+                "temperature_c", "cloud_cover_pct", "precipitation_mm",
+                "wind_speed_kmh", "shortwave_radiation_w_m2", "is_forecast")},
+        )
+        upserted += len(db.execute(stmt.returning(WeatherObservation.id)).all())
     db.commit()
-    return inserted
+    return upserted, source
