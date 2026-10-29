@@ -8,7 +8,7 @@ from app.auth import get_current_user
 from app.db import get_db
 from app.models import User
 from app.routers.installations import owned_installation
-from app.schemas import ForecastOut, ForecastPoint, ForecastModelOut
+from app.schemas import ForecastOut, ForecastPoint, ForecastModelOut, AccuracyOut
 from app.services import forecast_services as fs
 
 router = APIRouter(tags=["Forecast"])
@@ -48,3 +48,8 @@ def get_forecast(id: int, hours: int = Query(48, ge=1, le=fs.MAX_HORIZON_H), use
     rows = fs.latest_forecast(db, id, hours)
     model = fs.get_active_model(db, id)
     return ForecastOut(model_version=model.version if model else None, points=rows)
+
+@router.get("/installation/{id}/forecast/accuracy", response_model=AccuracyOut)
+def forecast_accuracy(id: int, days: int = Query(14, ge=1, le=90), min_lead_hours: int = Query(12, ge=1, le=72), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    installation = owned_installation(db, id, user)
+    return fs.accuracy(db, installation, days, min_lead_hours)

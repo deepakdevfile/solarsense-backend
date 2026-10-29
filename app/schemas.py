@@ -85,6 +85,22 @@ class ForecastOut(BaseModel):
     model_version: str | None
     points: list[ForecastPoint]
 
+class AccuracyPoint(BaseModel):
+    target_time: datetime
+    forecast_kw: float
+    actual_kw: float | None
+    issued_at: datetime
+
+class AccuracyOut(BaseModel):
+    n_hours: int
+    mae_kw: float | None
+    rmse_kw: float | None
+    wape_pct: float | None
+    bias_kw: float | None
+    bias_pct: float | None
+    min_lead_hours: int
+    points: list[AccuracyPoint]
+
 class ForecastModelOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int

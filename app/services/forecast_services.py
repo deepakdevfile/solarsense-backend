@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.ml.features import WEATHER, make_features
 from app.ml.model_store import load_artifact
-from app.models import Installation, ForecastModel, Forecast, WeatherObservation
+from app.models import Installation, ForecastModel, Forecast, WeatherObservation, Measurement
 from app.services.weather_services import sync_weather
 
 MIN_RERUN = timedelta(minutes=10)  
@@ -75,3 +75,52 @@ def latest_forecast(db: Session, installation_id: int, hours: int, now: datetime
         select(Forecast).where(Forecast.installation_id == installation_id, Forecast.target_time > now,
                                Forecast.target_time <= now + timedelta(hours=hours))
         .distinct(Forecast.target_time).order_by(Forecast.target_time, Forecast.issued_at.desc())).all()
+
+def accuracy(db: Session, installation: Installation, days: int = 14, min_lead_hours: int = 12, now: datetime | None = None) -> dict:
+    """Compare stored forecasts with what the plant really produced.
+
+    For every past hour we use the newest forecast that was issued at least `min_lead_hours` earlier,
+    so a forecast made minutes before the hour (which is nearly a measurement) cannot flatter the score."""
+    now = now or datetime.now(timezone.utc)
+    start = now - timedelta(days=days)
+    fc = db.scalars(
+        select(Forecast).where(
+            Forecast.installation_id == installation.id, Forecast.target_time > start, Forecast.target_time <= now,
+            Forecast.issued_at <= Forecast.target_time - timedelta(hours=min_lead_hours))
+        .distinct(Forecast.target_time).order_by(Forecast.target_time, Forecast.issued_at.desc())).all()
+    empty = {"n_hours": 0, "mae_kw": None, "rmse_kw": None, "wape_pct": None, "bias_kw": None,
+             "bias_pct": None, "min_lead_hours": min_lead_hours, "points": []}
+    if not fc:
+        return empty
+
+    meas = db.execute(select(Measurement.measured_at, Measurement.power_kw).where(
+        Measurement.installation_id == installation.id,
+        Measurement.measured_at > start - timedelta(hours=1), Measurement.measured_at <= now)).all()
+    actual = pd.Series(dtype=float)
+    if meas:
+        s = pd.Series([m.power_kw for m in meas], index=pd.DatetimeIndex([m.measured_at.astimezone(timezone.utc).replace(tzinfo=None) for m in meas])).sort_index()
+        g = s.resample("1h", closed="right", label="right").agg(["mean", "count"])
+        actual = g["mean"].where(g["count"] >= 3)
+
+    points, f_list, a_list = [], [], []
+    for f in fc:
+        key = f.target_time.astimezone(timezone.utc).replace(tzinfo=None)
+        a = actual.get(key)
+        a = None if a is None or pd.isna(a) else float(a)
+        points.append({"target_time": f.target_time, "forecast_kw": f.power_kw, "actual_kw": a, "issued_at": f.issued_at})
+        if a is not None and f.is_daylight:
+            f_list.append(f.power_kw)
+            a_list.append(a)
+    if not a_list:
+        return {**empty, "points": points}
+    f_arr = np.array(f_list)
+    a_arr = np.array(a_list)
+    return {
+        "n_hours": len(a_arr), "mae_kw": float(np.abs(f_arr - a_arr).mean()),
+        "rmse_kw": float(np.sqrt(((f_arr - a_arr) ** 2).mean())),
+        "wape_pct": float(100 * np.abs(f_arr - a_arr).sum() / a_arr.sum()) if a_arr.sum() > 0 else None,
+        "bias_kw": float((f_arr - a_arr).mean()),
+        "bias_pct": float(100 * (f_arr - a_arr).sum() / a_arr.sum()) if a_arr.sum() > 0 else None,
+        "min_lead_hours": min_lead_hours, 
+        "points": points,
+    }
