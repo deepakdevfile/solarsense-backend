@@ -84,3 +84,14 @@ class ForecastPoint(BaseModel):
 class ForecastOut(BaseModel):
     model_version: str | None
     points: list[ForecastPoint]
+
+class ForecastModelOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    version: str
+    capacity_kw: float
+    trained_start: str | None
+    trained_end: str | None
+    metrics: dict
+    is_active: bool
+    created_at: datetime

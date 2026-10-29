@@ -8,12 +8,19 @@ from app.auth import get_current_user
 from app.db import get_db
 from app.models import User
 from app.routers.installations import owned_installation
-from app.schemas import ForecastOut, ForecastPoint
+from app.schemas import ForecastOut, ForecastPoint, ForecastModelOut
 from app.services import forecast_services as fs
 
 router = APIRouter(tags=["Forecast"])
 log = logging.getLogger("solarsense.forecast")
 
+@router.get("/installation/{id}/forecast/model", response_model=ForecastModelOut)
+def forecast_model(id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    owned_installation(db, id, user)
+    model = fs.get_active_model(db, id)
+    if not model:
+        raise HTTPException(404, "No active forecast model for this installation")
+    return model
 
 @router.post("/installation/{id}/forecast/run", response_model=ForecastOut)
 def run_forecast(id: int, hours: int = Query(48, ge=1, le=fs.MAX_HORIZON_H), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -34,3 +41,4 @@ def run_forecast(id: int, hours: int = Query(48, ge=1, le=fs.MAX_HORIZON_H), use
         raise HTTPException(422, str(exc))
     
     return ForecastOut(model_version=model.version, points=[ForecastPoint(**r) for r in records])
+
