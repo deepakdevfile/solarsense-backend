@@ -73,3 +73,14 @@ class WeatherOut(BaseModel):
 class WeatherSyncResult(BaseModel):
     upserted: int
     source: str
+
+class ForecastPoint(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    target_time: datetime
+    power_kw: float
+    is_daylight: bool
+    issued_at: datetime
+
+class ForecastOut(BaseModel):
+    model_version: str | None
+    points: list[ForecastPoint]

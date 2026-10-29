@@ -1,7 +1,10 @@
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from .db import Base
-from sqlalchemy import String, Float, ForeignKey, UniqueConstraint, Index, DateTime, func, text, Boolean
 from datetime import datetime
+
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import String, Float, ForeignKey, UniqueConstraint, Index, DateTime, func, text, Boolean
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .db import Base
 
 class User(Base):
     __tablename__ = "users"
@@ -48,3 +51,32 @@ class WeatherObservation(Base):
     is_forecast: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     installation_id: Mapped[int] = mapped_column(ForeignKey("installations.id", ondelete="CASCADE"))
     installation: Mapped[Installation] = relationship(back_populates= "weather")
+
+class ForecastModel(Base):
+    __tablename__ = "forecast_models"
+    __table_args__ = (UniqueConstraint("installation_id", "version", name="uq_forecast_model_version"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    installation_id: Mapped[int] = mapped_column(ForeignKey("installations.id", ondelete="CASCADE"), index=True)
+    version: Mapped[str] = mapped_column(String(60))
+    file_name: Mapped[str] = mapped_column(String(255))
+    capacity_kw: Mapped[float] = mapped_column(Float)
+    trained_start: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    trained_end: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    metrics: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), nullable=False)
+    library_versions: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+class Forecast(Base):
+    __tablename__ = "forecasts"
+    __table_args__ = (
+        UniqueConstraint("installation_id", "target_time", "issued_at", name="uq_forecast_issue"),
+        Index("ix_forecast_installation_target", "installation_id", "target_time"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    installation_id: Mapped[int] = mapped_column(ForeignKey("installations.id", ondelete="CASCADE"))
+    model_id: Mapped[int] = mapped_column(ForeignKey("forecast_models.id", ondelete="CASCADE"))
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    target_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    power_kw: Mapped[float] = mapped_column(Float)
+    is_daylight: Mapped[bool] = mapped_column(Boolean)
