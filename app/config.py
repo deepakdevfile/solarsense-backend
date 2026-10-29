@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     jwt_secret: str
     cookie_secure: bool = False
     cookie_samesite: Literal["lax", "srict", "none"] = "lax"
+    model_dir: str = "models"
     ALLOWED_ORIGINS: List[str] = []
 
     model_config = SettingsConfigDict(env_file = ".env", extra="ignore")
