@@ -67,3 +67,11 @@ def run_forecast(db: Session, installation: Installation, horizon_hours: int = 4
     db.execute(pg_insert(Forecast).values(records).on_conflict_do_nothing(constraint="uq_forecast_issue"))
     db.commit()
     return model_row, records
+
+def latest_forecast(db: Session, installation_id: int, hours: int, now: datetime | None = None):
+    """Newest-issued prediction for every future hour."""
+    now = now or datetime.now(timezone.utc)
+    return db.scalars(
+        select(Forecast).where(Forecast.installation_id == installation_id, Forecast.target_time > now,
+                               Forecast.target_time <= now + timedelta(hours=hours))
+        .distinct(Forecast.target_time).order_by(Forecast.target_time, Forecast.issued_at.desc())).all()

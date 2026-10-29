@@ -42,3 +42,9 @@ def run_forecast(id: int, hours: int = Query(48, ge=1, le=fs.MAX_HORIZON_H), use
     
     return ForecastOut(model_version=model.version, points=[ForecastPoint(**r) for r in records])
 
+@router.get("/installation/{id}/forecast", response_model=ForecastOut)
+def get_forecast(id: int, hours: int = Query(48, ge=1, le=fs.MAX_HORIZON_H), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    owned_installation(db, id, user)
+    rows = fs.latest_forecast(db, id, hours)
+    model = fs.get_active_model(db, id)
+    return ForecastOut(model_version=model.version if model else None, points=rows)
