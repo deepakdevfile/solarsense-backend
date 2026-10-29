@@ -5,6 +5,7 @@ from app.routers import users
 from app.routers import installations
 from app.routers import measurements
 from app.routers import weathers
+from app.routers import forecasts
 from app.config import settings
 
 # Base.metadata.create_all(bind=engine)
@@ -22,6 +23,7 @@ app.include_router(users.router)
 app.include_router(installations.router)
 app.include_router(measurements.router)
 app.include_router(weathers.router)
+app.include_router(forecasts.router)
 
 @app.get("/")
 async def root():
